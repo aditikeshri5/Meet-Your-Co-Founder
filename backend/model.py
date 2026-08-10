@@ -39,3 +39,19 @@ class Participant(db.Model):
         db.DateTime,
         server_default=db.func.now()
     )
+
+
+class Room(db.Model):
+    __tablename__ = "rooms"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    room_number = db.Column(
+        db.String(20),
+        nullable=False
+    )
+
+    capacity = db.Column(
+        db.Integer,
+        nullable=False
+    )
