@@ -10,12 +10,19 @@ from login_ep import login
 from dashboard import dashboard
 from decision_ep import decision
 from rooms_ep import rooms
+from flask_cors import CORS
+
+
 
 load_dotenv()
 
 
 
 app = Flask(__name__)
+
+
+app = Flask(__name__)
+CORS(app, origins=["http://localhost:5173"])
 
 
 
