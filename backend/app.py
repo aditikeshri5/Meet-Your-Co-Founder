@@ -9,6 +9,7 @@ from registration_ep import registration
 from login_ep import login
 from dashboard import dashboard
 from decision_ep import decision
+from rooms_ep import rooms
 
 load_dotenv()
 
@@ -30,6 +31,7 @@ app.register_blueprint(registration, url_prefix="/api/auth")
 app.register_blueprint(login, url_prefix="/api/auth")
 app.register_blueprint(dashboard, url_prefix="/api")
 app.register_blueprint(decision, url_prefix="/api")
+app.register_blueprint(rooms, url_prefix="/api")
 
 # with app.app_context():
 #     db.create_all()
