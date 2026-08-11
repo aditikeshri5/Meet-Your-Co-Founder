@@ -119,5 +119,61 @@ Update the logged-in participant's assigned room. Requires auth.
 
 ---
 
+---
+
 ## Ideas
-*(coming soon)*
+
+### POST /idea
+Submit a startup idea for the logged-in participant. Requires auth.
+Each participant can submit only ONE idea.
+
+**Headers**
+`Authorization: Bearer <token>`
+
+**Body**
+```json
+{
+  "title": "string",
+  "description": "string",
+  "category_id": 1
+}
+```
+
+**Success (201)**
+```json
+{
+  "message": "Idea submitted successfully",
+  "idea": {
+    "id": 1,
+    "title": "AI-powered study buddy",
+    "description": "A tool that helps students find compatible study groups.",
+    "category_id": 1
+  }
+}
+```
+
+**Errors**
+- 400 — missing fields, or invalid `category_id`
+- 404 — participant not found
+- 409 — participant has already submitted an idea
+
+---
+
+## Registration Flow Notes
+
+Idea submission is currently **optional** and shown on the same registration
+screen as a UI choice, but is a **separate API call**, not part of `/register`.
+
+Frontend flow:
+1. Call `POST /auth/register` — creates the participant
+2. Call `POST /auth/login` — get a token, save it (`localStorage.setItem("token", access_token)`)
+3. If the user filled in idea fields (title/description/category), call
+   `POST /idea` with the token
+4. If left blank, skip step 3 — user can submit their idea later from another
+   screen (e.g. dashboard), reusing this same endpoint
+
+
+
+## on the registration add these idea categories in the exact same order : 
+        - "Technology", "Finance", "Healthcare", "Real Estate", "Retail",
+          "Education", "Climate", "Transportation", "Media", "Legal"

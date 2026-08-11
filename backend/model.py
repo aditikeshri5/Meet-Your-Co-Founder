@@ -55,3 +55,48 @@ class Room(db.Model):
         db.Integer,
         nullable=False
     )
+
+
+class Category(db.Model):
+    __tablename__ = "categories"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    name = db.Column(
+        db.String(50),
+        unique=True,
+        nullable=False
+    )
+
+
+class Idea(db.Model):
+    __tablename__ = "ideas"
+
+    id = db.Column(db.Integer, primary_key=True)
+
+    participant_id = db.Column(
+        db.Integer,
+        db.ForeignKey("participants.id"),
+        nullable=False
+    )
+
+    category_id = db.Column(
+        db.Integer,
+        db.ForeignKey("categories.id"),
+        nullable=False
+    )
+
+    title = db.Column(
+        db.String(200),
+        nullable=False
+    )
+
+    description = db.Column(
+        db.Text,
+        nullable=False
+    )
+
+    created_at = db.Column(
+        db.DateTime,
+        server_default=db.func.now()
+    )
