@@ -128,10 +128,8 @@ const LoginForm = ({ onSuccess }) => {
 
 // ─── Register Form ────────────────────────────────────────────────────────────
 const RegisterForm = ({ onSuccess }) => {
-  const [role, setRole] = useState('participant'); // 'participant' | 'founder'
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', password: '',
-    company_name: '', brief_description: '',
+    name: '', email: '', phone: '', password: ''
   });
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
@@ -148,10 +146,6 @@ const RegisterForm = ({ onSuccess }) => {
       errs.phone = 'Enter a valid phone number';
     if (!form.password) errs.password = 'Password is required';
     else if (form.password.length < 6) errs.password = 'Minimum 6 characters';
-    if (role === 'founder') {
-      if (!form.company_name.trim()) errs.company_name = 'Company name is required';
-      if (!form.brief_description.trim()) errs.brief_description = 'Description is required';
-    }
     return errs;
   };
 
@@ -172,16 +166,8 @@ const RegisterForm = ({ onSuccess }) => {
         password: form.password,
       });
 
-      // Save founder-specific data locally until backend supports it
-      if (role === 'founder') {
-        localStorage.setItem('founder_profile', JSON.stringify({
-          role: 'founder',
-          company_name: form.company_name,
-          brief_description: form.brief_description,
-        }));
-      } else {
-        localStorage.setItem('founder_profile', JSON.stringify({ role: 'participant' }));
-      }
+      // Save participant role locally
+      localStorage.setItem('founder_profile', JSON.stringify({ role: 'participant' }));
 
       // Auto-login after successful registration
       const loginData = await authAPI.login({ email: form.email, password: form.password });
@@ -197,26 +183,6 @@ const RegisterForm = ({ onSuccess }) => {
 
   return (
     <form onSubmit={handleSubmit} className="space-y-3.5 animate-fadeIn">
-      {/* Role Toggle */}
-      <div className="flex rounded-xl overflow-hidden border border-cyan-500/20 mb-1">
-        {['participant', 'founder'].map((r) => (
-          <button
-            key={r} type="button"
-            onClick={() => setRole(r)}
-            className={`
-              flex-1 py-2.5 text-xs font-bold uppercase tracking-wider transition-all duration-300 cursor-pointer
-              ${role === r
-                ? 'bg-gradient-to-r from-cyan-600 to-teal-600 text-white shadow-[inset_0_0_10px_rgba(0,0,0,0.2)]'
-                : 'bg-slate-950/40 text-slate-400 hover:text-white'
-              }
-            `}
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            {r === 'founder' ? '🚀 Founder' : '👤 Participant'}
-          </button>
-        ))}
-      </div>
-
       {apiError && (
         <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
           {apiError}
@@ -231,44 +197,6 @@ const RegisterForm = ({ onSuccess }) => {
         value={form.phone} onChange={set('phone')} error={errors.phone} />
       <Field id="reg-password" label="Password" type="password" placeholder="Min. 6 characters"
         value={form.password} onChange={set('password')} error={errors.password} />
-
-      {/* Founder-only fields — animated slide-in */}
-      <div
-        className="overflow-hidden transition-all duration-500 ease-in-out space-y-3.5"
-        style={{ maxHeight: role === 'founder' ? '200px' : '0', opacity: role === 'founder' ? 1 : 0 }}
-      >
-        <div className="pt-1 border-t border-cyan-500/15">
-          <p className="text-[10px] uppercase tracking-widest text-cyan-400/70 font-semibold mb-3">
-            ─ Founder Details ─
-          </p>
-          <div className="space-y-3.5">
-            <Field id="reg-company" label="Company / Startup Name" placeholder="e.g. Acme Corp"
-              value={form.company_name} onChange={set('company_name')} error={errors.company_name}
-              required={role === 'founder'} />
-            <div>
-              <label htmlFor="reg-desc" className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                Brief Description
-              </label>
-              <textarea
-                id="reg-desc"
-                rows={2}
-                placeholder="What does your startup do? What are you looking for in a co-founder?"
-                value={form.brief_description}
-                onChange={(e) => setForm((f) => ({ ...f, brief_description: e.target.value }))}
-                className={`
-                  w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
-                  bg-slate-950/60 backdrop-blur-sm border resize-none outline-none
-                  focus:ring-2 focus:ring-cyan-500/25 transition-all duration-200
-                  ${errors.brief_description ? 'border-red-500/70' : 'border-cyan-500/25 focus:border-cyan-400'}
-                `}
-              />
-              {errors.brief_description && (
-                <p className="mt-1 text-xs text-red-400">⚠ {errors.brief_description}</p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
 
       <SubmitBtn loading={loading} label="Create Account" />
     </form>

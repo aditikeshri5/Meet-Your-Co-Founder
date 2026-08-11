@@ -154,9 +154,7 @@ const DataRow = ({ label, value, highlight = false }) => (
 );
 
 // ─── Profile view ─────────────────────────────────────────────────────────────
-const ProfileView = ({ participant, founderProfile }) => {
-  const isFounder = founderProfile?.role === 'founder';
-
+const ProfileView = ({ participant }) => {
   return (
     <div className="space-y-5 animate-fadeIn">
       <SectionTitle label="My Profile" />
@@ -183,22 +181,13 @@ const ProfileView = ({ participant, founderProfile }) => {
             {participant?.name}
           </p>
           <p className="text-sm text-cyan-400 mt-0.5">{participant?.email}</p>
-          <span className={`
-            inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider
-            ${isFounder
-              ? 'bg-cyan-500/15 border border-cyan-500/30 text-cyan-300'
-              : 'bg-slate-700/50 border border-slate-600/50 text-slate-300'
-            }
-          `}>
+          <span className="inline-flex items-center gap-2 mt-2 px-3 py-1 rounded-full text-[11px] font-bold uppercase tracking-wider bg-slate-700/50 border border-slate-600/50 text-slate-300">
             <Icon
-              d={isFounder
-                ? 'M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4'
-                : 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
-              }
+              d='M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z'
               size={13}
               strokeWidth={2}
             />
-            {isFounder ? 'Founder' : 'Participant'}
+            Participant
           </span>
         </div>
       </Card>
@@ -215,31 +204,6 @@ const ProfileView = ({ participant, founderProfile }) => {
         <DataRow label="Room Assigned" value={participant?.room_id ? `Room ${participant.room_id}` : 'Not yet assigned'} />
       </Card>
 
-      {/* Founder section */}
-      {isFounder && (
-        <Card className="border-cyan-500/25 shadow-[0_0_30px_rgba(8,145,178,0.15)]">
-          <div className="flex items-center gap-2.5 mb-4">
-            <Icon
-              d="M19 21V5a2 2 0 00-2-2H7a2 2 0 00-2 2v16m14 0h2m-2 0h-5m-9 0H3m2 0h5M9 7h1m-1 4h1m4-4h1m-1 4h1m-5 10v-5a1 1 0 011-1h2a1 1 0 011 1v5m-4 0h4"
-              size={16}
-              strokeWidth={2}
-              className="text-cyan-400"
-            />
-            <p className="text-xs uppercase tracking-widest text-cyan-400/80 font-semibold">
-              Founder Details
-            </p>
-          </div>
-          <DataRow label="Startup / Company" value={founderProfile?.company_name} highlight />
-          <div className="pt-3 border-t border-cyan-500/10">
-            <p className="text-[11px] uppercase tracking-widest text-slate-500 font-semibold mb-2">
-              Brief Description
-            </p>
-            <p className="text-sm text-slate-300 leading-relaxed">
-              {founderProfile?.brief_description || <span className="italic text-slate-600">—</span>}
-            </p>
-          </div>
-        </Card>
-      )}
     </div>
   );
 };
@@ -626,11 +590,6 @@ const DashboardPage = () => {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
-  const founderProfile = (() => {
-    try { return JSON.parse(localStorage.getItem('founder_profile') || '{}'); }
-    catch { return {}; }
-  })();
-
   const logout = useCallback(() => {
     tokenStore.clear();
     localStorage.removeItem('founder_profile');
@@ -688,7 +647,7 @@ const DashboardPage = () => {
     );
 
     switch (active) {
-      case 'profile':  return <ProfileView participant={participant} founderProfile={founderProfile} />;
+      case 'profile':  return <ProfileView participant={participant} />;
       case 'event':    return <EventView />;
       case 'waiting':  return <WaitingRoomView participant={participant} />;
       case 'join':     return <JoinEventView participant={participant} />;
