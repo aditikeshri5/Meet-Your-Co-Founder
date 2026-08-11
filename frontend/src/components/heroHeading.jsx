@@ -1,5 +1,5 @@
 /**
- * heroHeading.jsx
+ * heroHeading.jsx — Reduced glow intensity on the hero heading
  ─────────────────────────────
  */
 
@@ -35,22 +35,22 @@ const HeroHeading = () => {
             <feDisplacementMap
               in="SourceGraphic"
               in2="noise"
-              scale="6"
+              scale="5"
               xChannelSelector="R"
               yChannelSelector="G"
               result="displacedText"
             />
 
-            {/* Electric Cyan Bloom Glow */}
-            <feGaussianBlur in="displacedText" stdDeviation="2.5" result="cyanGlow" />
+            {/* Softer Cyan Bloom Glow (reduced stdDeviation) */}
+            <feGaussianBlur in="displacedText" stdDeviation="1.8" result="cyanGlow" />
             <feColorMatrix
               in="cyanGlow"
               type="matrix"
               values="
-                0 0 0 0 0.1
-                0 0.8 0 0 0.7
-                0 0 1 0 0.95
-                0 0 0 1 0
+                0 0 0 0 0.05
+                0 0.6 0 0 0.6
+                0 0 0.9 0 0.85
+                0 0 0 0.75 0
               "
               result="cyanFlameColor"
             />
@@ -64,9 +64,9 @@ const HeroHeading = () => {
         </defs>
       </svg>
 
-      {/* ── Line 1: MEET YOUR (White core + Cyan Flame Streak) ─────── */}
+      {/* ── Line 1: MEET YOUR ─────────────────────────────────────── */}
       <div className="relative inline-block">
-        {/* Motion trail shadow (renders blue flame streak extending down-left) */}
+        {/* Motion trail — reduced blur & opacity */}
         <span
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none select-none leading-[0.95] font-black italic tracking-tighter"
@@ -74,9 +74,9 @@ const HeroHeading = () => {
             fontFamily: "'Outfit', sans-serif",
             fontSize: 'clamp(2.5rem, 9.5vw, 6.8rem)',
             color: '#286e77',
-            opacity: 0.65,
-            transform: 'translate(-8px, 12px) skewX(-12deg) scale(0.98)',
-            filter: 'blur(10px) drop-shadow(-15px 25px 35px rgba(92, 192, 235, 0.8))',
+            opacity: 0.35,
+            transform: 'translate(-6px, 10px) skewX(-12deg) scale(0.98)',
+            filter: 'blur(7px) drop-shadow(-10px 18px 24px rgba(92, 192, 235, 0.45))',
           }}
         >
           MEET YOUR
@@ -91,11 +91,10 @@ const HeroHeading = () => {
             color: '#ffffff',
             filter: 'url(#blue-flame-motion)',
             textShadow: `
-              0 0 10px rgba(255, 255, 255, 0.9),
-              0 0 20px rgba(56, 189, 248, 0.9),
-              0 0 40px rgba(56, 189, 248, 0.7),
-              -6px 8px 18px rgba(14, 165, 233, 0.6),
-              -12px 16px 30px rgba(6, 182, 212, 0.4)
+              0 0 8px rgba(255, 255, 255, 0.75),
+              0 0 16px rgba(56, 189, 248, 0.55),
+              0 0 30px rgba(56, 189, 248, 0.35),
+              -4px 6px 14px rgba(14, 165, 233, 0.3)
             `,
           }}
         >
@@ -103,9 +102,9 @@ const HeroHeading = () => {
         </span>
       </div>
 
-      {/* ── Line 2: CO-FOUNDER (Light Blue → Teal Gradient + Cyan Flame Streak) ── */}
+      {/* ── Line 2: CO-FOUNDER ────────────────────────────────────── */}
       <div className="relative inline-block block mt-1 sm:mt-2">
-        {/* Motion trail shadow */}
+        {/* Motion trail — reduced blur & opacity */}
         <span
           aria-hidden="true"
           className="absolute inset-0 pointer-events-none select-none leading-[0.95] font-black italic tracking-tighter"
@@ -113,9 +112,9 @@ const HeroHeading = () => {
             fontFamily: "'Outfit', sans-serif",
             fontSize: 'clamp(2.5rem, 9.5vw, 6.8rem)',
             color: '#89cedabd',
-            opacity: 0.65,
-            transform: 'translate(-8px, 12px) skewX(-12deg) scale(0.98)',
-            filter: 'blur(10px) drop-shadow(-15px 25px 35px rgba(6, 181, 212, 0.7))',
+            opacity: 0.35,
+            transform: 'translate(-6px, 10px) skewX(-12deg) scale(0.98)',
+            filter: 'blur(7px) drop-shadow(-10px 18px 24px rgba(6, 181, 212, 0.4))',
           }}
         >
           CO-FOUNDER
@@ -132,7 +131,6 @@ const HeroHeading = () => {
             WebkitTextFillColor: 'transparent',
             backgroundClip: 'text',
             filter: 'url(#blue-flame-motion)',
-            dropShadow: '0 0 25px rgba(56, 189, 248, 0.8)',
           }}
         >
           CO-FOUNDER

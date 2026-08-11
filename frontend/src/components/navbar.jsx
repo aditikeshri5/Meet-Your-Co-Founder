@@ -83,11 +83,11 @@ const Navbar = () => {
           aria-label="Entrepreneur & Innovation Society - Back to top"
         >
           <img
-            src="/eis-logo-raw.jpg"
+            src="/logo.png"
             alt="EIS Logo"
             className="h-9 sm:h-11 w-auto object-contain transition-transform duration-300 group-hover:scale-105"
             style={{
-              filter: 'invert(1) brightness(1.2) contrast(1.1)',
+              filter: 'brightness(1.15) contrast(1.05)',
               mixBlendMode: 'screen',
             }}
           />
