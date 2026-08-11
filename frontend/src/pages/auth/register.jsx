@@ -281,12 +281,23 @@ const AuthPage = () => {
   const navigate = useNavigate();
   const [activeTab, setActiveTab] = useState(searchParams.get('tab') === 'register' ? 'register' : 'login');
 
+  const handleRedirect = () => {
+    const pendingRoom = sessionStorage.getItem('pending_checkin_room');
+    if (pendingRoom) {
+      navigate(`/checkin?room_id=${pendingRoom}`, { replace: true });
+    } else {
+      navigate('/dashboard', { replace: true });
+    }
+  };
+
   useEffect(() => {
-    // If already logged in, go straight to dashboard
-    if (tokenStore.get()) navigate('/dashboard', { replace: true });
+    // If already logged in, redirect to intent or dashboard
+    if (tokenStore.get() && tokenStore.get() !== 'undefined' && tokenStore.get() !== 'null') {
+      handleRedirect();
+    }
   }, [navigate]);
 
-  const handleSuccess = () => navigate('/dashboard', { replace: true });
+  const handleSuccess = () => handleRedirect();
 
   return (
     <main className="relative min-h-screen flex flex-col items-center justify-center px-4 py-12 overflow-x-hidden">
