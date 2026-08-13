@@ -119,6 +119,45 @@ Update the logged-in participant's assigned room. Requires auth.
 
 ---
 
+## Live matching rounds
+
+### GET /room/:room_id/current-round
+
+Returns the logged-in participant's pairing in the current three-minute round.
+Each conversation is followed by a fixed 15-second transition phase, during
+which `pairing` is `null`. The backend advances expired rounds atomically before
+responding; the frontend must poll this endpoint instead of deciding when to change rounds. See
+[FRONTEND_ROUND_INTEGRATION.md](FRONTEND_ROUND_INTEGRATION.md) for the frontend
+integration contract.
+
+### POST /room/:room_id/start-event
+
+Creates the full schedule and starts round one. Requires a JWT for a
+participant whose `is_admin` role is true. See [ADMIN_SETUP.md](ADMIN_SETUP.md)
+to grant or revoke this role.
+
+---
+
+## Swipe decisions
+
+### POST /pairings/:pairing_id/swipe
+
+Save or update the logged-in participant's decision for a pairing they belong
+to. Decisions remain editable in the backend after the event.
+
+**Body**
+
+```json
+{ "decision": "accept" }
+```
+
+`decision` must be `accept` or `reject`.
+
+### GET /swipes
+
+Returns the logged-in participant's saved accepted/rejected people, including
+the opponent and round number. Use this to render the end-of-event review list.
+
 ---
 
 ## Ideas

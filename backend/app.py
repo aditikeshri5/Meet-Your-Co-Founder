@@ -8,10 +8,14 @@ from model import db
 from registration_ep import registration
 from login_ep import login
 from dashboard import dashboard
-from decision_ep import decision
+from swipe_response import swipes
 from rooms_ep import rooms
 from flask_cors import CORS
 from ideas_ep import ideas
+from start_event_ep import events
+from current_round_ep import rounds
+
+
 
 
 
@@ -35,9 +39,11 @@ JWTManager(app)
 app.register_blueprint(registration, url_prefix="/api/auth")
 app.register_blueprint(login, url_prefix="/api/auth")
 app.register_blueprint(dashboard, url_prefix="/api")
-app.register_blueprint(decision, url_prefix="/api")
+app.register_blueprint(swipes, url_prefix="/api")
 app.register_blueprint(rooms, url_prefix="/api")
 app.register_blueprint(ideas, url_prefix="/api")
+app.register_blueprint(events, url_prefix="/api")
+app.register_blueprint(rounds, url_prefix="/api")
 # with app.app_context():
 #     db.create_all()
 
