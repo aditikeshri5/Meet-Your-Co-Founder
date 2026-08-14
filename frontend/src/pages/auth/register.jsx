@@ -6,8 +6,9 @@
 
 import { useState, useEffect } from 'react';
 import { useNavigate, useSearchParams } from 'react-router-dom';
+import { motion, AnimatePresence } from 'framer-motion';
 import HeroBackground from '../../components/heroBackground';
-import { authAPI, tokenStore } from '../../services/api';
+import { authAPI, tokenStore, ideaAPI } from '../../services/api';
 
 // ─── Reusable Input ───────────────────────────────────────────────────────────
 const Field = ({ label, type = 'text', placeholder, value, onChange, error, id, required = true }) => (
@@ -105,7 +106,14 @@ const LoginForm = ({ onSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-4 animate-fadeIn">
+    <motion.form
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      onSubmit={handleSubmit}
+      className="space-y-4"
+    >
       {apiError && (
         <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
           {apiError}
@@ -122,15 +130,17 @@ const LoginForm = ({ onSuccess }) => {
         value={form.password} onChange={set('password')} error={errors.password}
       />
       <SubmitBtn loading={loading} label="Login" />
-    </form>
+    </motion.form>
   );
 };
 
 // ─── Register Form ────────────────────────────────────────────────────────────
 const RegisterForm = ({ onSuccess }) => {
   const [form, setForm] = useState({
-    name: '', email: '', phone: '', password: ''
+    name: '', email: '', phone: '', password: '',
+    ideaTitle: '', ideaDescription: '', ideaCategoryId: ''
   });
+  const [showIdea, setShowIdea] = useState(false);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -146,6 +156,12 @@ const RegisterForm = ({ onSuccess }) => {
       errs.phone = 'Enter a valid phone number';
     if (!form.password) errs.password = 'Password is required';
     else if (form.password.length < 6) errs.password = 'Minimum 6 characters';
+
+    if (showIdea) {
+      if (!form.ideaCategoryId) errs.ideaCategoryId = 'Please select a category';
+      if (!form.ideaTitle.trim()) errs.ideaTitle = 'Idea title is required';
+      if (!form.ideaDescription.trim()) errs.ideaDescription = 'Description is required';
+    }
     return errs;
   };
 
@@ -172,7 +188,21 @@ const RegisterForm = ({ onSuccess }) => {
       // Auto-login after successful registration
       const loginData = await authAPI.login({ email: form.email, password: form.password });
       // Backend returns { token: '...' } (not access_token)
-      tokenStore.set(loginData.token || loginData.access_token);
+      const token = loginData.token || loginData.access_token;
+      tokenStore.set(token);
+
+      if (showIdea && form.ideaTitle.trim() && form.ideaDescription.trim()) {
+        try {
+          await ideaAPI.submit({
+            title: form.ideaTitle,
+            description: form.ideaDescription,
+            category_id: parseInt(form.ideaCategoryId, 10)
+          }, token);
+        } catch (ideaErr) {
+          console.error('Idea submission failed:', ideaErr);
+        }
+      }
+
       onSuccess();
     } catch (err) {
       setApiError(err.message || err.error || 'Registration failed. Please try again.');
@@ -182,7 +212,14 @@ const RegisterForm = ({ onSuccess }) => {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="space-y-3.5 animate-fadeIn">
+    <motion.form
+      initial={{ opacity: 0, y: 10 }}
+      animate={{ opacity: 1, y: 0 }}
+      exit={{ opacity: 0, y: -10 }}
+      transition={{ duration: 0.3 }}
+      onSubmit={handleSubmit}
+      className="space-y-3.5"
+    >
       {apiError && (
         <div className="px-4 py-3 rounded-xl bg-red-500/10 border border-red-500/30 text-red-300 text-sm">
           {apiError}
@@ -198,8 +235,94 @@ const RegisterForm = ({ onSuccess }) => {
       <Field id="reg-password" label="Password" type="password" placeholder="Min. 6 characters"
         value={form.password} onChange={set('password')} error={errors.password} />
 
+      <button
+        type="button"
+        onClick={() => setShowIdea(!showIdea)}
+        className="w-full flex items-center justify-between text-sm font-semibold text-cyan-400 mt-2 py-2 cursor-pointer hover:text-cyan-300 transition-colors"
+      >
+        Got a startup idea? (Optional)
+        <svg
+          className={`w-4 h-4 transition-transform duration-200 ${showIdea ? 'rotate-180' : ''}`}
+          fill="none" stroke="currentColor" viewBox="0 0 24 24"
+        >
+          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
+        </svg>
+      </button>
+
+      <AnimatePresence>
+        {showIdea && (
+          <motion.div
+            initial={{ opacity: 0, height: 0 }}
+            animate={{ opacity: 1, height: 'auto' }}
+            exit={{ opacity: 0, height: 0 }}
+            className="space-y-3.5 overflow-hidden"
+          >
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Category
+              </label>
+              <select
+                value={form.ideaCategoryId}
+                onChange={set('ideaCategoryId')}
+                className={`
+                  w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
+                  bg-slate-950/60 backdrop-blur-sm
+                  border transition-all duration-200 outline-none
+                  focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400
+                  appearance-none cursor-pointer
+                  ${errors.ideaCategoryId ? 'border-red-500/70 focus:border-red-400' : 'border-cyan-500/25'}
+                `}
+              >
+                <option value="" disabled>Select Category</option>
+                <option value="1">Technology</option>
+                <option value="2">Finance</option>
+                <option value="3">Healthcare</option>
+                <option value="4">Real Estate</option>
+                <option value="5">Retail</option>
+                <option value="6">Education</option>
+                <option value="7">Climate</option>
+                <option value="8">Transportation</option>
+                <option value="9">Media</option>
+                <option value="10">Legal</option>
+              </select>
+              {errors.ideaCategoryId && (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <span>⚠</span> {errors.ideaCategoryId}
+                </p>
+              )}
+            </div>
+            <Field id="idea-title" label="Idea Title" placeholder="What is your startup called?"
+              value={form.ideaTitle} onChange={set('ideaTitle')} required={true} error={errors.ideaTitle} />
+            <div>
+              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+                Brief Description
+              </label>
+              <textarea
+                value={form.ideaDescription}
+                onChange={set('ideaDescription')}
+                placeholder="Describe your idea briefly..."
+                rows={3}
+                className={`
+                  w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
+                  bg-slate-950/60 backdrop-blur-sm
+                  border transition-all duration-200 outline-none
+                  focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400
+                  resize-none
+                  ${errors.ideaDescription ? 'border-red-500/70 focus:border-red-400' : 'border-cyan-500/25'}
+                `}
+              />
+              {errors.ideaDescription && (
+                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+                  <span>⚠</span> {errors.ideaDescription}
+                </p>
+              )}
+            </div>
+          </motion.div>
+        )}
+      </AnimatePresence>
+
       <SubmitBtn loading={loading} label="Create Account" />
-    </form>
+    </motion.form>
   );
 };
 
@@ -273,23 +396,24 @@ const AuthPage = () => {
               style={{ fontFamily: "'Outfit', sans-serif" }}
             >
               {tab}
+              {activeTab === tab && (
+                <motion.div
+                  layoutId="activeTabIndicator"
+                  className="absolute bottom-0 left-0 right-0 h-0.5 bg-gradient-to-r from-cyan-400 to-teal-400 rounded-full"
+                  style={{ boxShadow: '0 0 10px rgba(56,189,248,0.7)' }}
+                />
+              )}
             </button>
           ))}
-          <div
-            className="absolute bottom-0 h-0.5 bg-gradient-to-r from-cyan-400 to-teal-400 transition-all duration-300 rounded-full"
-            style={{
-              left: activeTab === 'login' ? '0%' : '50%',
-              width: '50%',
-              boxShadow: '0 0 10px rgba(56,189,248,0.7)',
-            }}
-          />
         </div>
 
         {/* Forms */}
-        {activeTab === 'login'
-          ? <LoginForm onSuccess={handleSuccess} />
-          : <RegisterForm onSuccess={handleSuccess} />
-        }
+        <AnimatePresence mode="wait">
+          {activeTab === 'login'
+            ? <LoginForm key="login" onSuccess={handleSuccess} />
+            : <RegisterForm key="register" onSuccess={handleSuccess} />
+          }
+        </AnimatePresence>
 
         {/* Switch link */}
         <p className="mt-5 text-center text-xs text-slate-500">

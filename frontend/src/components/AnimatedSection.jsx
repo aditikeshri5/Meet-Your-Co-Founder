@@ -1,47 +1,44 @@
 /**
  * AnimatedSection.jsx
+ * Scroll-triggered reveal using Framer Motion's whileInView.
  */
 
-import { useState, useEffect, useRef } from 'react';
+import { motion } from 'framer-motion';
+
+const animations = {
+  'fade-in-up': {
+    hidden: { opacity: 0, y: 40 },
+    visible: { opacity: 1, y: 0 },
+  },
+  'zoom-in': {
+    hidden: { opacity: 0, scale: 0.92 },
+    visible: { opacity: 1, scale: 1 },
+  },
+};
 
 const AnimatedSection = ({
   children,
   className = '',
-  animation = 'fade-in-up', // 'fade-in-up' | 'zoom-in'
-  delay = 0, // delay in ms
+  animation = 'fade-in-up',
+  delay = 0,
 }) => {
-  const [isVisible, setIsVisible] = useState(false);
-  const domRef = useRef(null);
-
-  useEffect(() => {
-    const observer = new IntersectionObserver(
-      ([entry]) => {
-        if (entry.isIntersecting) {
-          setIsVisible(true);
-          observer.unobserve(entry.target);
-        }
-      },
-      { threshold: 0.15 }
-    );
-
-    const currentRef = domRef.current;
-    if (currentRef) observer.observe(currentRef);
-
-    return () => {
-      if (currentRef) observer.unobserve(currentRef);
-    };
-  }, []);
-
-  const animClass = animation === 'zoom-in' ? 'animate-zoom-in' : 'animate-fade-in-up';
+  const variant = animations[animation] || animations['fade-in-up'];
 
   return (
-    <div
-      ref={domRef}
-      className={`transition-opacity duration-700 ${isVisible ? animClass : 'opacity-0'} ${className}`}
-      style={{ animationDelay: `${delay}ms` }}
+    <motion.div
+      className={className}
+      initial="hidden"
+      whileInView="visible"
+      viewport={{ once: true, amount: 0.15 }}
+      variants={variant}
+      transition={{
+        duration: 0.6,
+        delay: delay / 1000,
+        ease: [0.25, 0.1, 0.25, 1],
+      }}
     >
       {children}
-    </div>
+    </motion.div>
   );
 };
 

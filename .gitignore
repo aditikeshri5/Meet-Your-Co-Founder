@@ -46,9 +46,6 @@ backend/instance/
 # ── Pip clutter pulled into backend/src/ (broken smoothapi install artefact) ──
 backend/src/
 
-# ── Scratch / debug scripts created during development ────────────────────────
-backend/check_db.py
-
 # ── Old root-level public/ folder (assets live in frontend/public/ now) ───────
 /public/
 

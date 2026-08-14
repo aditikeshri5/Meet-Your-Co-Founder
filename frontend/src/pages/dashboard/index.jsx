@@ -1,13 +1,7 @@
-/**
- * dashboard/index.jsx — User Dashboard
- * Four views: Profile · Event Details · Waiting Room · Join Event
- * No emojis — SVG icons only. Sign-out has a confirmation modal.
- * ──────────────────────────────────────────────────────────────────
- */
-
-import { useState, useEffect, useCallback } from 'react';
+import { useState, useEffect, useCallback, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { dashboardAPI, tokenStore } from '../../services/api';
+import { motion, AnimatePresence } from 'framer-motion';
+import { dashboardAPI, tokenStore, roundAPI, swipeAPI, eventAPI } from '../../services/api';
 import HeroBackground from '../../components/heroBackground';
 
 // ─── Icon helper ──────────────────────────────────────────────────────────────
@@ -30,35 +24,36 @@ const NAV_ITEMS = [
     icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
   },
   {
-    id: 'waiting',
-    label: 'Waiting Room',
-    icon: 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z',
+    id: 'live',
+    label: 'Live Matching',
+    icon: 'M13 10V3L4 14h7v7l9-11h-7z',
   },
   {
-    id: 'join',
-    label: 'Join Event',
-    icon: 'M13 9l3 3m0 0l-3 3m3-3H8m13 0a9 9 0 11-18 0 9 9 0 0118 0z',
+    id: 'connections',
+    label: 'My Connections',
+    icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
   },
 ];
 
 // ─── Sign-out Confirmation Modal ──────────────────────────────────────────────
 const SignOutModal = ({ onConfirm, onCancel }) => (
-  <div className="fixed inset-0 z-[100] flex items-center justify-center px-4">
-    {/* Backdrop */}
+  <motion.div 
+    initial={{ opacity: 0 }} animate={{ opacity: 1 }} exit={{ opacity: 0 }}
+    className="fixed inset-0 z-[100] flex items-center justify-center px-4"
+  >
     <div
       className="absolute inset-0 bg-black/70 backdrop-blur-sm"
       onClick={onCancel}
     />
-    {/* Modal card */}
-    <div className="
+    <motion.div 
+      initial={{ scale: 0.95, opacity: 0 }} animate={{ scale: 1, opacity: 1 }} exit={{ scale: 0.95, opacity: 0 }}
+      className="
       relative z-10 w-full max-w-sm
       rounded-2xl p-6 sm:p-7
       bg-[rgba(5,10,30,0.95)] backdrop-blur-2xl
       border border-red-500/20
       shadow-[0_0_50px_rgba(239,68,68,0.1)]
-      animate-fadeIn
     ">
-      {/* Warning icon */}
       <div className="
         w-12 h-12 rounded-full mx-auto mb-4
         bg-red-500/10 border border-red-500/25
@@ -110,8 +105,8 @@ const SignOutModal = ({ onConfirm, onCancel }) => (
           Yes, Sign Out
         </button>
       </div>
-    </div>
-  </div>
+    </motion.div>
+  </motion.div>
 );
 
 // ─── Glassmorphism card ───────────────────────────────────────────────────────
@@ -153,10 +148,45 @@ const DataRow = ({ label, value, highlight = false }) => (
   </div>
 );
 
+// ─── Circular Timer ───────────────────────────────────────────────────────────
+const CircularTimer = ({ secondsRemaining, totalSeconds = 180 }) => {
+  const radius = 40;
+  const circumference = 2 * Math.PI * radius;
+  const strokeDashoffset = circumference - (secondsRemaining / totalSeconds) * circumference;
+  
+  return (
+    <div className="relative flex items-center justify-center w-32 h-32 mx-auto">
+      <svg className="w-full h-full transform -rotate-90" viewBox="0 0 100 100">
+        <circle cx="50" cy="50" r={radius} stroke="rgba(8,145,178,0.2)" strokeWidth="8" fill="none" />
+        <motion.circle 
+          cx="50" cy="50" r={radius} 
+          stroke="currentColor" 
+          strokeWidth="8" fill="none" 
+          className="text-cyan-400"
+          strokeLinecap="round"
+          initial={{ strokeDashoffset: circumference }}
+          animate={{ strokeDashoffset }}
+          transition={{ duration: 1, ease: "linear" }}
+          style={{ strokeDasharray: circumference }}
+        />
+      </svg>
+      <motion.div 
+        key={secondsRemaining}
+        initial={{ scale: 0.8, opacity: 0 }}
+        animate={{ scale: 1, opacity: 1 }}
+        className="absolute text-2xl font-black italic text-white"
+        style={{ fontFamily: "'Outfit', sans-serif" }}
+      >
+        {Math.max(0, secondsRemaining)}s
+      </motion.div>
+    </div>
+  );
+};
+
 // ─── Profile view ─────────────────────────────────────────────────────────────
 const ProfileView = ({ participant }) => {
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
       <SectionTitle label="My Profile" />
 
       {/* Avatar + name hero */}
@@ -204,7 +234,7 @@ const ProfileView = ({ participant }) => {
         <DataRow label="Room Assigned" value={participant?.room_id ? `Room ${participant.room_id}` : 'Not yet assigned'} />
       </Card>
 
-    </div>
+    </motion.div>
   );
 };
 
@@ -239,7 +269,7 @@ const EventView = () => {
   ];
 
   return (
-    <div className="space-y-5 animate-fadeIn">
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
       <SectionTitle label="Event Details" />
 
       {/* Hero card */}
@@ -301,283 +331,367 @@ const EventView = () => {
           ))}
         </ul>
       </Card>
-    </div>
+    </motion.div>
   );
 };
 
-// ─── Waiting Room view ────────────────────────────────────────────────────────
-const WaitingRoomView = ({ participant }) => {
-  const hasRoom = participant?.room_id != null;
+// ─── Live Matching View ───────────────────────────────────────────────────────
+const LiveMatchingView = ({ participant, setActiveTab }) => {
+  const [round, setRound] = useState(null);
+  const [status, setStatus] = useState('loading'); // loading, waiting, no_room, error, active
+  const [errorMsg, setErrorMsg] = useState('');
+  const [secondsRemaining, setSecondsRemaining] = useState(0);
+  const [decision, setDecision] = useState(null); // 'accept' or 'reject'
+  const navigate = useNavigate();
+
+  const fetchRound = useCallback(async () => {
+    if (!participant?.room_id) {
+      setStatus('no_room');
+      return;
+    }
+    try {
+      const token = tokenStore.get();
+      const res = await roundAPI.getCurrentRound(participant.room_id, token);
+      setRound(res);
+      setStatus('active');
+      if (res.round?.seconds_remaining !== undefined) {
+         setSecondsRemaining(Math.max(0, res.round.seconds_remaining));
+      }
+    } catch (err) {
+      if (err.status === 409) {
+        setStatus('waiting');
+      } else if (err.status === 401) {
+        navigate('/auth?tab=login');
+      } else if (err.status === 403) {
+        setStatus('error');
+        setErrorMsg("You're not checked into this room");
+      } else {
+        setStatus('error');
+        setErrorMsg('Failed to load round info');
+      }
+    }
+  }, [participant?.room_id, navigate]);
+
+  useEffect(() => {
+    fetchRound();
+    const interval = setInterval(fetchRound, 5000);
+    return () => clearInterval(interval);
+  }, [fetchRound]);
+
+  useEffect(() => {
+    if (status !== 'active' || !round || round.phase === 'completed') return;
+    const interval = setInterval(() => {
+      setSecondsRemaining(prev => Math.max(0, prev - 1));
+    }, 1000);
+    return () => clearInterval(interval);
+  }, [status, round?.phase]);
+
+  const handleStartEvent = async () => {
+    try {
+      const token = tokenStore.get();
+      await eventAPI.startEvent(participant.room_id, token);
+      fetchRound();
+    } catch (err) {
+      if (err.status === 403) {
+        alert("Only the event admin can start the event");
+      } else {
+        alert("Failed to start event");
+      }
+    }
+  };
+
+  const handleSwipe = async (type) => {
+    try {
+      const token = tokenStore.get();
+      await swipeAPI.saveSwipe(round.pairing.id, type, token);
+      setDecision(type);
+    } catch (err) {
+      console.error('Swipe error', err);
+    }
+  };
+
+  useEffect(() => {
+    setDecision(null);
+  }, [round?.pairing?.id]);
+
+  if (status === 'no_room') {
+    return (
+       <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+         <SectionTitle label="Live Matching" />
+         <Card className="text-center py-8">
+           <p className="text-slate-300">Check into a room first to participate in live matching.</p>
+         </Card>
+       </motion.div>
+    );
+  }
+
+  if (status === 'loading') {
+    return <div className="text-center text-slate-400 py-10">Loading live matching...</div>;
+  }
+
+  if (status === 'error') {
+     return <div className="text-center text-red-400 py-10">{errorMsg}</div>;
+  }
+
+  if (status === 'waiting') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+        <SectionTitle label="Live Matching" />
+        <Card className="text-center py-10 flex flex-col items-center">
+           <motion.div 
+             animate={{ scale: [1, 1.1, 1], opacity: [0.5, 1, 0.5] }} 
+             transition={{ repeat: Infinity, duration: 2 }}
+             className="w-16 h-16 rounded-full bg-cyan-500/20 border border-cyan-500/50 mb-6 flex items-center justify-center text-cyan-400"
+           >
+             <Icon d="M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z" size={24} />
+           </motion.div>
+           <h3 className="text-xl font-black italic text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+             Waiting for the host to start the event...
+           </h3>
+           <button onClick={handleStartEvent} className="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold cursor-pointer transition-all hover:scale-105">
+             Start Event
+           </button>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (round?.phase === 'completed') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+        <SectionTitle label="Event Complete" />
+        <Card className="text-center py-10">
+           <h3 className="text-2xl font-black italic text-white mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
+             Event Complete!
+           </h3>
+           <p className="text-slate-300 mb-6">Great job! Check your connections to see who you matched with.</p>
+           <button onClick={() => setActiveTab('connections')} className="px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold cursor-pointer transition-all hover:scale-105">
+             Go to My Connections
+           </button>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  if (round?.phase === 'transition') {
+    return (
+      <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+        <SectionTitle label="Transition" />
+        <Card className="text-center py-10">
+           <CircularTimer secondsRemaining={secondsRemaining} totalSeconds={15} />
+           <h3 className="text-xl font-black italic text-white mt-6 mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+             Please move to your next match
+           </h3>
+           <p className="text-slate-400">Next round starts soon...</p>
+        </Card>
+      </motion.div>
+    );
+  }
+
+  // Active Phase
+  return (
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+      <SectionTitle label={`Live Matching - Round ${round.round?.number}`} />
+      
+      {round.pairing?.is_bye ? (
+        <Card className="text-center py-10">
+           <CircularTimer secondsRemaining={secondsRemaining} totalSeconds={180} />
+           <h3 className="text-xl font-black italic text-white mt-6 mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
+             Sitting this round out
+           </h3>
+           <p className="text-slate-400">Take a breather. You have a bye this round.</p>
+        </Card>
+      ) : (
+        <Card className="text-center py-8">
+           <CircularTimer secondsRemaining={secondsRemaining} totalSeconds={180} />
+           
+           <div className="mt-8 flex flex-col items-center">
+             <div className="w-20 h-20 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center text-3xl font-black text-white shadow-[0_0_20px_rgba(8,145,178,0.4)] mb-4" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                {round.pairing?.opponent?.name?.charAt(0)?.toUpperCase() ?? '?'}
+             </div>
+             <h3 className="text-2xl font-black italic text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
+               {round.pairing?.opponent?.name}
+             </h3>
+             <p className="text-cyan-400 mt-1">Opponent</p>
+           </div>
+
+           <div className="mt-8 flex justify-center gap-4">
+              <motion.button 
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.05 }}
+                onClick={() => handleSwipe('reject')}
+                className={`flex-1 max-w-[140px] py-3 rounded-xl font-bold border transition-colors cursor-pointer ${decision === 'reject' ? 'bg-red-600 text-white border-red-500' : 'bg-[rgba(5,12,35,0.6)] text-slate-300 border-slate-700 hover:bg-red-500/20 hover:border-red-500/50'}`}
+              >
+                Reject
+              </motion.button>
+              <motion.button 
+                whileTap={{ scale: 0.95 }}
+                whileHover={{ scale: 1.05 }}
+                onClick={() => handleSwipe('accept')}
+                className={`flex-1 max-w-[140px] py-3 rounded-xl font-bold border transition-colors cursor-pointer ${decision === 'accept' ? 'bg-cyan-600 text-white border-cyan-500' : 'bg-[rgba(5,12,35,0.6)] text-slate-300 border-slate-700 hover:bg-cyan-500/20 hover:border-cyan-500/50'}`}
+              >
+                Accept
+              </motion.button>
+           </div>
+        </Card>
+      )}
+    </motion.div>
+  );
+};
+
+// ─── My Connections View ──────────────────────────────────────────────────────
+const ConnectionsView = () => {
+  const [swipes, setSwipes] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    const fetchSwipes = async () => {
+      try {
+         const token = tokenStore.get();
+         const res = await swipeAPI.getMySwipes(token);
+         setSwipes(res.decisions || []);
+      } catch (err) {
+         console.error(err);
+      } finally {
+         setLoading(false);
+      }
+    };
+    fetchSwipes();
+  }, []);
+
+  if (loading) return <div className="text-slate-400 text-center py-10">Loading connections...</div>;
 
   return (
-    <div className="space-y-5 animate-fadeIn">
-      <SectionTitle label="Waiting Room" />
-
-      {/* Status card */}
-      <Card className={`text-center py-8 ${hasRoom ? 'border-cyan-500/30' : 'border-slate-600/30'}`}>
-        <div className={`
-          w-16 h-16 rounded-full mx-auto mb-4 flex items-center justify-center
-          ${hasRoom
-            ? 'bg-cyan-500/15 border border-cyan-500/30'
-            : 'bg-slate-700/40 border border-slate-600/40'
-          }
-        `}>
-          <Icon
-            d={hasRoom
-              ? 'M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z'
-              : 'M12 8v4l3 3m6-3a9 9 0 11-18 0 9 9 0 0118 0z'
-            }
-            size={28}
-            strokeWidth={1.75}
-            className={hasRoom ? 'text-cyan-400' : 'text-slate-400'}
-          />
-        </div>
-        <h3
-          className="text-xl font-black italic text-white mb-2"
-          style={{ fontFamily: "'Outfit', sans-serif" }}
-        >
-          {hasRoom ? `Room ${participant.room_id} Assigned!` : 'Awaiting Room Assignment'}
-        </h3>
-        <p className="text-sm text-slate-400 max-w-sm mx-auto leading-relaxed">
-          {hasRoom
-            ? `You've been assigned to Room ${participant.room_id}. Head to the venue and look for your room number.`
-            : 'Your room will be assigned on the day of the event. Check back here or scan the QR code at the venue.'
-          }
-        </p>
-        {hasRoom && (
-          <div
-            className="
-              mt-5 mx-auto w-fit px-6 py-3 rounded-full
-              bg-gradient-to-r from-cyan-600 to-teal-600
-              text-white text-sm font-bold uppercase tracking-wider
-              shadow-[0_0_20px_rgba(8,145,178,0.4)]
-            "
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            Room {participant.room_id}
+    <motion.div initial={{ opacity: 0, y: 20 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+       <SectionTitle label="My Connections" />
+       
+       {swipes.length === 0 ? (
+          <Card className="text-center py-10">
+             <p className="text-slate-400">No connections yet - join a live event to start meeting people!</p>
+          </Card>
+       ) : (
+          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+             {swipes.map((swipe, idx) => (
+                <motion.div 
+                   key={swipe.pairing_id} 
+                   initial={{ opacity: 0, y: 20 }} 
+                   animate={{ opacity: 1, y: 0 }} 
+                   transition={{ delay: idx * 0.1 }}
+                >
+                   <Card className="flex items-center gap-4">
+                      <div className="w-12 h-12 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center text-xl font-black text-white shrink-0 shadow-[0_0_15px_rgba(8,145,178,0.3)]" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                         {swipe.opponent?.name?.charAt(0)?.toUpperCase() ?? '?'}
+                      </div>
+                      <div className="flex-1 min-w-0">
+                         <h4 className="text-lg font-black italic text-white truncate" style={{ fontFamily: "'Outfit', sans-serif" }}>{swipe.opponent?.name}</h4>
+                         <span className="text-xs text-slate-300 font-medium bg-slate-800/80 border border-slate-700 px-2 py-0.5 rounded-full inline-block mt-1">Round {swipe.round_number}</span>
+                      </div>
+                      <div className="shrink-0">
+                         {swipe.decision === 'accept' ? (
+                            <div className="w-8 h-8 rounded-full bg-green-500/10 border border-green-500/30 flex items-center justify-center text-green-400 shadow-[0_0_10px_rgba(34,197,94,0.2)]">
+                               <Icon d="M5 13l4 4L19 7" size={16} strokeWidth={3} />
+                            </div>
+                         ) : (
+                            <div className="w-8 h-8 rounded-full bg-red-500/10 border border-red-500/30 flex items-center justify-center text-red-400 shadow-[0_0_10px_rgba(239,68,68,0.2)]">
+                               <Icon d="M6 18L18 6M6 6l12 12" size={16} strokeWidth={3} />
+                            </div>
+                         )}
+                      </div>
+                   </Card>
+                </motion.div>
+             ))}
           </div>
-        )}
-      </Card>
-
-      {/* QR flow explainer */}
-      <Card>
-        <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-4">
-          How Room Check-in Works
-        </p>
-        <ol className="space-y-4">
-          {[
-            { step: '1', text: 'Arrive at the event venue' },
-            { step: '2', text: 'Find the QR code at your assigned room entrance' },
-            { step: '3', text: 'Scan the QR code with your phone camera' },
-            { step: '4', text: "You'll be automatically checked into your room" },
-          ].map((item) => (
-            <li key={item.step} className="flex items-start gap-4">
-              <span className="
-                w-7 h-7 rounded-full shrink-0
-                bg-gradient-to-br from-cyan-600 to-teal-700
-                flex items-center justify-center
-                text-xs font-black text-white
-              ">
-                {item.step}
-              </span>
-              <p className="text-sm text-slate-300 pt-1">{item.text}</p>
-            </li>
-          ))}
-        </ol>
-      </Card>
-    </div>
+       )}
+    </motion.div>
   );
 };
 
-// ─── Join Event view ──────────────────────────────────────────────────────────
-const JoinEventView = ({ participant }) => (
-  <div className="space-y-5 animate-fadeIn">
-    <SectionTitle label="Join Event" />
-
-    {/* Registration status */}
-    <Card className="text-center py-8 border-cyan-500/25 shadow-[0_0_30px_rgba(8,145,178,0.15)]">
-      <div className="
-        w-16 h-16 rounded-full mx-auto mb-5
-        bg-gradient-to-br from-cyan-500/20 to-teal-600/20
-        border border-cyan-500/30
-        flex items-center justify-center
-      ">
-        <svg className="w-8 h-8 text-cyan-400" fill="none" stroke="currentColor" viewBox="0 0 24 24">
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2"
-            d="M9 12l2 2 4-4m6 2a9 9 0 11-18 0 9 9 0 0118 0z" />
-        </svg>
-      </div>
-      <h3
-        className="text-xl font-black italic text-white mb-2"
-        style={{ fontFamily: "'Outfit', sans-serif" }}
-      >
-        You're Registered!
-      </h3>
-      <p className="text-sm text-slate-400 max-w-sm mx-auto">
-        Welcome to Meet Your Co-Founder,{' '}
-        <span className="text-cyan-300 font-semibold">{participant?.name}</span>.
-        Your spot is confirmed — we'll see you at the event!
-      </p>
-    </Card>
-
-    {/* Next steps */}
-    <Card>
-      <p className="text-xs uppercase tracking-widest text-slate-500 font-semibold mb-4">Your Next Steps</p>
-      <div className="space-y-3">
-        {[
-          {
-            icon: 'M16 7a4 4 0 11-8 0 4 4 0 018 0zM12 14a7 7 0 00-7 7h14a7 7 0 00-7-7z',
-            title: 'Complete your profile',
-            desc: 'Make sure your profile info is accurate',
-          },
-          {
-            icon: 'M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 00-2-2H5a2 2 0 00-2 2v12a2 2 0 002 2z',
-            title: 'Note the event date',
-            desc: 'Add it to your calendar — details coming soon',
-          },
-          {
-            icon: 'M13 10V3L4 14h7v7l9-11h-7z',
-            title: 'Think about your goals',
-            desc: 'What skills are you looking for in a co-founder?',
-          },
-          {
-            icon: 'M17 20h5v-2a3 3 0 00-5.356-1.857M17 20H7m10 0v-2c0-.656-.126-1.283-.356-1.857M7 20H2v-2a3 3 0 015.356-1.857M7 20v-2c0-.656.126-1.283.356-1.857m0 0a5.002 5.002 0 019.288 0M15 7a3 3 0 11-6 0 3 3 0 016 0z',
-            title: 'Come prepared',
-            desc: 'Bring your ideas, energy, and business cards!',
-          },
-        ].map((item) => (
-          <div
-            key={item.title}
-            className="
-              flex items-start gap-4 p-3.5 rounded-xl
-              bg-slate-950/40 border border-cyan-500/10
-              hover:border-cyan-500/25 transition-all duration-200
-            "
-          >
-            <div className="
-              w-8 h-8 rounded-lg shrink-0
-              bg-cyan-500/10 border border-cyan-500/20
-              flex items-center justify-center
-            ">
-              <Icon d={item.icon} size={15} strokeWidth={1.75} className="text-cyan-400" />
-            </div>
-            <div>
-              <p className="text-sm font-semibold text-white">{item.title}</p>
-              <p className="text-xs text-slate-400 mt-0.5">{item.desc}</p>
-            </div>
-          </div>
-        ))}
-      </div>
-    </Card>
-  </div>
-);
-
-// ─── Sidebar ──────────────────────────────────────────────────────────────────
-const Sidebar = ({ active, setActive, participant, onSignOutClick, sidebarOpen, setSidebarOpen }) => (
-  <>
-    {/* Mobile overlay */}
-    {sidebarOpen && (
-      <div
-        className="fixed inset-0 z-30 bg-black/60 backdrop-blur-sm lg:hidden"
-        onClick={() => setSidebarOpen(false)}
-      />
-    )}
-
-    <aside className={`
-      fixed top-0 left-0 h-screen z-40
-      w-64 flex flex-col min-h-0
-      bg-[rgba(3,8,25,0.92)] backdrop-blur-2xl
-      border-r border-cyan-500/15
-      transition-transform duration-300 ease-in-out
-      ${sidebarOpen ? 'translate-x-0' : '-translate-x-full'}
-      lg:sticky lg:top-0 lg:translate-x-0 lg:flex lg:h-screen
-    `}>
-      {/* Logo / header */}
-      <div className="px-5 py-5 border-b border-cyan-500/10 flex items-center justify-between">
-        <div>
-          <p className="text-[10px] uppercase tracking-widest text-cyan-400/70 font-semibold">Dashboard</p>
-          <p
-            className="text-base font-black italic tracking-tight text-white mt-0.5"
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            Meet Your<br />Co-Founder
-          </p>
-        </div>
-        <button
-          onClick={() => setSidebarOpen(false)}
-          className="lg:hidden text-slate-400 hover:text-white transition-colors cursor-pointer"
+// ─── Desktop Sidebar ──────────────────────────────────────────────────────────
+const Sidebar = ({ active, setActive, participant, onSignOutClick }) => (
+  <aside className="
+    hidden lg:flex lg:flex-col w-64 h-screen sticky top-0
+    bg-[rgba(3,8,25,0.92)] backdrop-blur-2xl
+    border-r border-cyan-500/15
+  ">
+    {/* Logo / header */}
+    <div className="px-5 py-5 border-b border-cyan-500/10 flex items-center justify-between">
+      <div>
+        <p className="text-[10px] uppercase tracking-widest text-cyan-400/70 font-semibold">Dashboard</p>
+        <p
+          className="text-base font-black italic tracking-tight text-white mt-0.5"
+          style={{ fontFamily: "'Outfit', sans-serif" }}
         >
-          <Icon d="M6 18L18 6M6 6l12 12" size={20} />
-        </button>
+          Meet Your<br />Co-Founder
+        </p>
       </div>
+    </div>
 
-      {/* User mini-profile */}
-      <div className="px-5 py-4 border-b border-cyan-500/10">
-        <div className="flex items-center gap-3">
-          <div
-            className="
-              w-9 h-9 rounded-full shrink-0
-              bg-gradient-to-br from-cyan-500 to-teal-600
-              flex items-center justify-center
-              text-sm font-black text-white
-            "
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            {participant?.name?.charAt(0)?.toUpperCase() ?? '?'}
-          </div>
-          <div className="min-w-0">
-            <p className="text-sm font-semibold text-white truncate">{participant?.name ?? 'Loading…'}</p>
-            <p className="text-xs text-slate-500 truncate">{participant?.email ?? ''}</p>
-          </div>
-        </div>
-      </div>
-
-      {/* Nav — flex-1 so it fills remaining space, pushing Sign Out to bottom */}
-      <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
-        {NAV_ITEMS.map((item) => {
-          const isActive = active === item.id;
-          return (
-            <button
-              key={item.id}
-              id={`dash-nav-${item.id}`}
-              onClick={() => { setActive(item.id); setSidebarOpen(false); }}
-              className={`
-                w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
-                transition-all duration-200 cursor-pointer text-left
-                ${isActive
-                  ? 'bg-gradient-to-r from-cyan-600/20 to-teal-600/10 text-cyan-300 border border-cyan-500/25 shadow-[inset_0_0_10px_rgba(8,145,178,0.1)]'
-                  : 'text-slate-400 hover:text-white hover:bg-white/5'
-                }
-              `}
-            >
-              <Icon d={item.icon} size={18} strokeWidth={isActive ? 2.5 : 2} />
-              {item.label}
-            </button>
-          );
-        })}
-      </nav>
-
-      {/* Sign Out — triggers confirmation modal */}
-      <div className="px-3 py-4 border-t border-cyan-500/10">
-        <button
-          onClick={onSignOutClick}
-          id="dash-logout"
+    {/* User mini-profile */}
+    <div className="px-5 py-4 border-b border-cyan-500/10">
+      <div className="flex items-center gap-3">
+        <div
           className="
-            w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
-            text-slate-400 hover:text-red-400 hover:bg-red-500/5
-            border border-transparent hover:border-red-500/15
-            transition-all duration-200 cursor-pointer
+            w-9 h-9 rounded-full shrink-0
+            bg-gradient-to-br from-cyan-500 to-teal-600
+            flex items-center justify-center
+            text-sm font-black text-white
           "
+          style={{ fontFamily: "'Outfit', sans-serif" }}
         >
-          <Icon
-            d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
-            size={18}
-          />
-          Sign Out
-        </button>
+          {participant?.name?.charAt(0)?.toUpperCase() ?? '?'}
+        </div>
+        <div className="min-w-0">
+          <p className="text-sm font-semibold text-white truncate">{participant?.name ?? 'Loading…'}</p>
+          <p className="text-xs text-slate-500 truncate">{participant?.email ?? ''}</p>
+        </div>
       </div>
-    </aside>
-  </>
+    </div>
+
+    {/* Nav */}
+    <nav className="flex-1 px-3 py-4 space-y-1 overflow-y-auto">
+      {NAV_ITEMS.map((item) => {
+        const isActive = active === item.id;
+        return (
+          <button
+            key={item.id}
+            id={`dash-nav-${item.id}`}
+            onClick={() => setActive(item.id)}
+            className={`
+              w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
+              transition-all duration-200 cursor-pointer text-left
+              ${isActive
+                ? 'bg-gradient-to-r from-cyan-600/20 to-teal-600/10 text-cyan-300 border border-cyan-500/25 shadow-[inset_0_0_10px_rgba(8,145,178,0.1)]'
+                : 'text-slate-400 hover:text-white hover:bg-white/5'
+              }
+            `}
+          >
+            <Icon d={item.icon} size={18} strokeWidth={isActive ? 2.5 : 2} />
+            {item.label}
+          </button>
+        );
+      })}
+    </nav>
+
+    {/* Sign Out */}
+    <div className="px-3 py-4 border-t border-cyan-500/10">
+      <button
+        onClick={onSignOutClick}
+        id="dash-logout"
+        className="
+          w-full flex items-center gap-3 px-3.5 py-2.5 rounded-xl text-sm font-medium
+          text-slate-400 hover:text-red-400 hover:bg-red-500/5
+          border border-transparent hover:border-red-500/15
+          transition-all duration-200 cursor-pointer
+        "
+      >
+        <Icon
+          d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1"
+          size={18}
+        />
+        Sign Out
+      </button>
+    </div>
+  </aside>
 );
 
 // ─── Dashboard Page ───────────────────────────────────────────────────────────
@@ -587,7 +701,6 @@ const DashboardPage = () => {
   const [participant, setParticipant] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
-  const [sidebarOpen, setSidebarOpen] = useState(false);
   const [showSignOutModal, setShowSignOutModal] = useState(false);
 
   const logout = useCallback(() => {
@@ -647,59 +760,60 @@ const DashboardPage = () => {
     );
 
     switch (active) {
-      case 'profile':  return <ProfileView participant={participant} />;
-      case 'event':    return <EventView />;
-      case 'waiting':  return <WaitingRoomView participant={participant} />;
-      case 'join':     return <JoinEventView participant={participant} />;
-      default:         return null;
+      case 'profile':     return <ProfileView participant={participant} />;
+      case 'event':       return <EventView />;
+      case 'live':        return <LiveMatchingView participant={participant} setActiveTab={setActive} />;
+      case 'connections': return <ConnectionsView />;
+      default:            return null;
     }
   };
 
   return (
-    <div className="relative min-h-screen flex overflow-hidden" style={{ fontFamily: "'Inter', sans-serif" }}>
+    <div className="relative min-h-screen flex overflow-hidden bg-[#030819]" style={{ fontFamily: "'Inter', sans-serif" }}>
       <HeroBackground />
 
       {/* Sign-out confirmation modal */}
-      {showSignOutModal && (
-        <SignOutModal
-          onConfirm={logout}
-          onCancel={() => setShowSignOutModal(false)}
-        />
-      )}
+      <AnimatePresence>
+        {showSignOutModal && (
+          <SignOutModal
+            onConfirm={logout}
+            onCancel={() => setShowSignOutModal(false)}
+          />
+        )}
+      </AnimatePresence>
 
-      {/* Sidebar */}
+      {/* Desktop Sidebar */}
       <Sidebar
         active={active}
         setActive={setActive}
         participant={participant}
         onSignOutClick={() => setShowSignOutModal(true)}
-        sidebarOpen={sidebarOpen}
-        setSidebarOpen={setSidebarOpen}
       />
 
       {/* Main content */}
-      <div className="flex-1 flex flex-col min-w-0 relative z-10">
-        {/* Top bar (mobile) */}
+      <div className="flex-1 flex flex-col min-w-0 relative z-10 pb-20 lg:pb-0">
+        
+        {/* Mobile Header */}
         <header className="
           lg:hidden flex items-center justify-between
-          px-4 py-3
+          px-4 py-4
           bg-[rgba(3,8,25,0.85)] backdrop-blur-xl
           border-b border-cyan-500/15 sticky top-0 z-20
         ">
+          <div className="flex items-center gap-3">
+             <div className="w-8 h-8 rounded-full bg-gradient-to-br from-cyan-500 to-teal-600 flex items-center justify-center text-xs font-black text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
+                {participant?.name?.charAt(0)?.toUpperCase() ?? '?'}
+             </div>
+             <p className="text-sm font-bold italic tracking-tight text-white" style={{ fontFamily: "'Outfit', sans-serif" }}>
+               {NAV_ITEMS.find((n) => n.id === active)?.label}
+             </p>
+          </div>
           <button
-            onClick={() => setSidebarOpen(true)}
-            className="text-slate-300 hover:text-white transition-colors cursor-pointer"
-            aria-label="Open sidebar"
+            onClick={() => setShowSignOutModal(true)}
+            className="text-slate-400 hover:text-red-400 transition-colors cursor-pointer p-2"
           >
-            <Icon d="M4 6h16M4 12h16M4 18h16" size={24} />
+            <Icon d="M17 16l4-4m0 0l-4-4m4 4H7m6 4v1a3 3 0 01-3 3H6a3 3 0 01-3-3V7a3 3 0 013-3h4a3 3 0 013 3v1" size={18} />
           </button>
-          <p
-            className="text-sm font-bold italic tracking-tight text-white"
-            style={{ fontFamily: "'Outfit', sans-serif" }}
-          >
-            {NAV_ITEMS.find((n) => n.id === active)?.label}
-          </p>
-          <div className="w-6" />
         </header>
 
         {/* Scrollable content */}
@@ -707,6 +821,34 @@ const DashboardPage = () => {
           {renderView()}
         </main>
       </div>
+
+      {/* Mobile Bottom Navigation */}
+      <nav className="lg:hidden fixed bottom-0 left-0 right-0 bg-[rgba(5,10,30,0.95)] backdrop-blur-xl border-t border-cyan-500/15 flex items-center justify-around px-2 py-2 z-40 pb-safe">
+        {NAV_ITEMS.map((item) => {
+          const isActive = active === item.id;
+          return (
+             <button 
+               key={item.id}
+               onClick={() => setActive(item.id)}
+               className="relative flex flex-col items-center justify-center w-16 h-14 cursor-pointer"
+             >
+               {isActive && (
+                 <motion.div 
+                   layoutId="bottomNavIndicator"
+                   className="absolute inset-0 bg-cyan-500/10 rounded-xl"
+                   transition={{ type: "spring", stiffness: 300, damping: 30 }}
+                 />
+               )}
+               <div className={`relative z-10 ${isActive ? 'text-cyan-400' : 'text-slate-500 hover:text-slate-300'}`}>
+                 <Icon d={item.icon} size={20} strokeWidth={isActive ? 2.5 : 2} />
+               </div>
+               <span className={`relative z-10 text-[10px] mt-1 font-medium ${isActive ? 'text-cyan-400' : 'text-slate-500'}`}>
+                 {item.label.split(' ')[0]}
+               </span>
+             </button>
+          );
+        })}
+      </nav>
     </div>
   );
 };
