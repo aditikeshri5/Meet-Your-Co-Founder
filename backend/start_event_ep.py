@@ -2,7 +2,7 @@ from flask import Blueprint, jsonify
 from datetime import datetime, timezone
 
 from model import db, Participant, Room, Round, Pairing
-from matchmaking import assign_sides, generate_round_robin
+from matchmaking import assign_sides, generate_round_robin, generate_domain_aware_schedule
 from admin_auth import admin_required
 
 
@@ -23,9 +23,15 @@ def start_event(room_id):
     if len(participants) < 2:
         return jsonify({"error": "Not enough participants in this room"}), 400
 
+    # Query ideas to map participants to categories
+    from model import Idea
     participant_ids = [p.id for p in participants]
-    side_a, side_b = assign_sides(participant_ids)
-    schedule = generate_round_robin(side_a, side_b)
+    ideas = Idea.query.filter(Idea.participant_id.in_(participant_ids)).all()
+    participant_to_category = {idea.participant_id: idea.category_id for idea in ideas}
+
+    # Generate category-restricted matchmaking schedule
+    schedule = generate_domain_aware_schedule(participant_ids, participant_to_category)
+
 
     first_round_obj = None
 
