@@ -24,7 +24,12 @@ load_dotenv()
 
 
 app = Flask(__name__)
-CORS(app, origins=["http://localhost:5173"])
+allowed_origins = [
+    origin.strip()
+    for origin in os.getenv("FRONTEND_URL", "http://localhost:5173").split(",")
+    if origin.strip()
+]
+CORS(app, origins=allowed_origins)
 
 
 
@@ -44,6 +49,12 @@ app.register_blueprint(rooms, url_prefix="/api")
 app.register_blueprint(ideas, url_prefix="/api")
 app.register_blueprint(events, url_prefix="/api")
 app.register_blueprint(rounds, url_prefix="/api")
+
+
+@app.get("/health")
+def health_check():
+    return {"status": "ok"}, 200
+
 # with app.app_context():
 #     db.create_all()
 
