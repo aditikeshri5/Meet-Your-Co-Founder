@@ -34,8 +34,12 @@ env/
 .env/
 ENV/
 
-# ── Backend secrets ────────────────────────────────────────────────────────────
+# ── Secrets / Env files ────────────────────────────────────────────────────────
+.env
+.env.*
 backend/.env
+**/.env
+**/.env.*
 
 # ── SQLite databases (local dev only — use real DB in production) ──────────────
 *.db
