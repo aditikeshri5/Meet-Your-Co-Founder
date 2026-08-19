@@ -140,7 +140,6 @@ const RegisterForm = ({ onSuccess }) => {
     name: '', email: '', phone: '', password: '',
     ideaTitle: '', ideaDescription: '', ideaCategoryId: ''
   });
-  const [showIdea, setShowIdea] = useState(false);
   const [errors, setErrors] = useState({});
   const [apiError, setApiError] = useState('');
   const [loading, setLoading] = useState(false);
@@ -157,11 +156,9 @@ const RegisterForm = ({ onSuccess }) => {
     if (!form.password) errs.password = 'Password is required';
     else if (form.password.length < 6) errs.password = 'Minimum 6 characters';
 
-    if (showIdea) {
-      if (!form.ideaCategoryId) errs.ideaCategoryId = 'Please select a category';
-      if (!form.ideaTitle.trim()) errs.ideaTitle = 'Idea title is required';
-      if (!form.ideaDescription.trim()) errs.ideaDescription = 'Description is required';
-    }
+    if (!form.ideaCategoryId) errs.ideaCategoryId = 'Please select a category';
+    if (!form.ideaTitle.trim()) errs.ideaTitle = 'Idea title is required';
+    if (!form.ideaDescription.trim()) errs.ideaDescription = 'Description is required';
     return errs;
   };
 
@@ -191,16 +188,14 @@ const RegisterForm = ({ onSuccess }) => {
       const token = loginData.token || loginData.access_token;
       tokenStore.set(token);
 
-      if (showIdea && form.ideaTitle.trim() && form.ideaDescription.trim()) {
-        try {
-          await ideaAPI.submit({
-            title: form.ideaTitle,
-            description: form.ideaDescription,
-            category_id: parseInt(form.ideaCategoryId, 10)
-          }, token);
-        } catch (ideaErr) {
-          console.error('Idea submission failed:', ideaErr);
-        }
+      try {
+        await ideaAPI.submit({
+          title: form.ideaTitle,
+          description: form.ideaDescription,
+          category_id: parseInt(form.ideaCategoryId, 10)
+        }, token);
+      } catch (ideaErr) {
+        console.error('Idea submission failed:', ideaErr);
       }
 
       onSuccess();
@@ -235,91 +230,74 @@ const RegisterForm = ({ onSuccess }) => {
       <Field id="reg-password" label="Password" type="password" placeholder="Min. 6 characters"
         value={form.password} onChange={set('password')} error={errors.password} />
 
-      <button
-        type="button"
-        onClick={() => setShowIdea(!showIdea)}
-        className="w-full flex items-center justify-between text-sm font-semibold text-cyan-400 mt-2 py-2 cursor-pointer hover:text-cyan-300 transition-colors"
-      >
-        Got a startup idea? (Optional)
-        <svg
-          className={`w-4 h-4 transition-transform duration-200 ${showIdea ? 'rotate-180' : ''}`}
-          fill="none" stroke="currentColor" viewBox="0 0 24 24"
-        >
-          <path strokeLinecap="round" strokeLinejoin="round" strokeWidth="2" d="M19 9l-7 7-7-7" />
-        </svg>
-      </button>
+      <div className="pt-2 border-t border-cyan-500/10">
+        <h4 className="text-xs font-black uppercase tracking-wider text-cyan-400 mb-3" style={{ fontFamily: "'Outfit', sans-serif" }}>
+          Startup Idea (Required)
+        </h4>
+      </div>
 
-      <AnimatePresence>
-        {showIdea && (
-          <motion.div
-            initial={{ opacity: 0, height: 0 }}
-            animate={{ opacity: 1, height: 'auto' }}
-            exit={{ opacity: 0, height: 0 }}
-            className="space-y-3.5 overflow-hidden"
+      <div className="space-y-3.5">
+        <div>
+          <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            Category
+          </label>
+          <select
+            value={form.ideaCategoryId}
+            onChange={set('ideaCategoryId')}
+            className={`
+              w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
+              bg-slate-950/60 backdrop-blur-sm
+              border transition-all duration-200 outline-none
+              focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400
+              appearance-none cursor-pointer
+              ${errors.ideaCategoryId ? 'border-red-500/70 focus:border-red-400' : 'border-cyan-500/25'}
+            `}
           >
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                Category
-              </label>
-              <select
-                value={form.ideaCategoryId}
-                onChange={set('ideaCategoryId')}
-                className={`
-                  w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
-                  bg-slate-950/60 backdrop-blur-sm
-                  border transition-all duration-200 outline-none
-                  focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400
-                  appearance-none cursor-pointer
-                  ${errors.ideaCategoryId ? 'border-red-500/70 focus:border-red-400' : 'border-cyan-500/25'}
-                `}
-              >
-                <option value="" disabled>Select Category</option>
-                <option value="1">Technology</option>
-                <option value="2">Finance</option>
-                <option value="3">Healthcare</option>
-                <option value="4">Real Estate</option>
-                <option value="5">Retail</option>
-                <option value="6">Education</option>
-                <option value="7">Climate</option>
-                <option value="8">Transportation</option>
-                <option value="9">Media</option>
-                <option value="10">Legal</option>
-              </select>
-              {errors.ideaCategoryId && (
-                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-                  <span>⚠</span> {errors.ideaCategoryId}
-                </p>
-              )}
-            </div>
-            <Field id="idea-title" label="Idea Title" placeholder="What is your startup called?"
-              value={form.ideaTitle} onChange={set('ideaTitle')} required={true} error={errors.ideaTitle} />
-            <div>
-              <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
-                Brief Description
-              </label>
-              <textarea
-                value={form.ideaDescription}
-                onChange={set('ideaDescription')}
-                placeholder="Describe your idea briefly..."
-                rows={3}
-                className={`
-                  w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
-                  bg-slate-950/60 backdrop-blur-sm
-                  border transition-all duration-200 outline-none
-                  focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400
-                  resize-none
-                  ${errors.ideaDescription ? 'border-red-500/70 focus:border-red-400' : 'border-cyan-500/25'}
-                `}
-              />
-              {errors.ideaDescription && (
-                <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
-                  <span>⚠</span> {errors.ideaDescription}
-                </p>
-              )}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+            <option value="" disabled>Select Category</option>
+            <option value="1">Technology</option>
+            <option value="2">Finance</option>
+            <option value="3">Healthcare</option>
+            <option value="4">Real Estate</option>
+            <option value="5">Retail</option>
+            <option value="6">Education</option>
+            <option value="7">Climate</option>
+            <option value="8">Transportation</option>
+            <option value="9">Media</option>
+            <option value="10">Legal</option>
+          </select>
+          {errors.ideaCategoryId && (
+            <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+              <span>⚠</span> {errors.ideaCategoryId}
+            </p>
+          )}
+        </div>
+        <Field id="idea-title" label="Idea Title" placeholder="What is your startup called?"
+          value={form.ideaTitle} onChange={set('ideaTitle')} required={true} error={errors.ideaTitle} />
+        <div>
+          <label className="block text-[11px] font-semibold uppercase tracking-wider text-slate-400 mb-1.5">
+            Brief Description
+          </label>
+          <textarea
+            value={form.ideaDescription}
+            onChange={set('ideaDescription')}
+            placeholder="Describe your idea briefly..."
+            rows={3}
+            className={`
+              w-full px-4 py-3 rounded-xl text-sm text-white placeholder-slate-500
+              bg-slate-950/60 backdrop-blur-sm
+              border transition-all duration-200 outline-none
+              focus:ring-2 focus:ring-cyan-500/25 focus:border-cyan-400
+              resize-none
+              ${errors.ideaDescription ? 'border-red-500/70 focus:border-red-400' : 'border-cyan-500/25'}
+            `}
+          />
+          {errors.ideaDescription && (
+            <p className="mt-1 text-xs text-red-400 flex items-center gap-1">
+              <span>⚠</span> {errors.ideaDescription}
+            </p>
+          )}
+        </div>
+      </div>
 
       <SubmitBtn loading={loading} label="Create Account" />
     </motion.form>

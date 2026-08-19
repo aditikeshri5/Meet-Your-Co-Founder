@@ -37,6 +37,7 @@ with app.app_context():
 
         # Enforce 4 test users exist and are checked into Room 1
         from werkzeug.security import generate_password_hash
+        from model import Idea, Category
         pw_hash = generate_password_hash("password")
         
         emails = [
@@ -60,12 +61,40 @@ with app.app_context():
             participants.append(p)
         db.session.commit()
 
+        # Enforce ideas exist for test participants to assign categories
+        # Let's verify categories 1 (Tech) and 5 (Retail) exist, otherwise create them or query any existing ones
+        tech_cat = Category.query.get(1)
+        if not tech_cat:
+            tech_cat = Category(id=1, name="Technology")
+            db.session.add(tech_cat)
+        retail_cat = Category.query.get(5)
+        if not retail_cat:
+            retail_cat = Category(id=5, name="Retail")
+            db.session.add(retail_cat)
+        db.session.commit()
+
+        for idx, p in enumerate(participants, start=1):
+            idea = Idea.query.filter_by(participant_id=p.id).first()
+            if not idea:
+                # User 1 & 2 -> Tech (1), User 3 & 4 -> Retail (5)
+                cat_id = 1 if idx <= 2 else 5
+                idea = Idea(
+                    participant_id=p.id,
+                    category_id=cat_id,
+                    title=f"Idea for {p.name}",
+                    description="Interesting startup idea description."
+                )
+                db.session.add(idea)
+        db.session.commit()
+
         # Reload participant objects
         participant_ids = [p.id for p in participants]
+        ideas = Idea.query.filter(Idea.participant_id.in_(participant_ids)).all()
+        participant_to_category = {idea.participant_id: idea.category_id for idea in ideas}
         
-        # Generate pairings
-        side_a, side_b = assign_sides(participant_ids)
-        schedule = generate_round_robin(side_a, side_b)
+        # Generate domain-aware pairings
+        from matchmaking import generate_domain_aware_schedule
+        schedule = generate_domain_aware_schedule(participant_ids, participant_to_category)
 
         first_round_obj = None
         for round_number, pairings in enumerate(schedule, start=1):
