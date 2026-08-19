@@ -26,7 +26,7 @@ load_dotenv()
 app = Flask(__name__)
 allowed_origins = [
     origin.strip()
-    for origin in os.getenv("FRONTEND_URL", "https://meet-your-co-founder.vercel.app").split(",")
+    for origin in os.getenv("FRONTEND_URL", "https://meet-your-co-founder-one.vercel.app").split(",")
     if origin.strip()
 ]
 CORS(app, origins=allowed_origins)
