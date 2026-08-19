@@ -4,7 +4,7 @@
  * In production, set VITE_API_URL to the deployed backend URL, including /api.
  */
 
-const BASE_URL = import.meta.env.VITE_API_URL || 'https://meet-your-co-founder.vercel.app/api';
+const BASE_URL = import.meta.env.VITE_API_URL || 'https://meet-your-co-founder.onrender.com/api';
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
 
