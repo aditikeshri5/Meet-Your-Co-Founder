@@ -25,7 +25,7 @@ load_dotenv()
 
 app = Flask(__name__)
 allowed_origins = [
-    origin.strip()
+    origin.strip().rstrip("/")
     for origin in os.getenv("FRONTEND_URL", "https://meet-your-co-founder-one.vercel.app").split(",")
     if origin.strip()
 ]
