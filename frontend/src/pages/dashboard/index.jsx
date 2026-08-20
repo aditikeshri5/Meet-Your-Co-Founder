@@ -342,6 +342,7 @@ const LiveMatchingView = ({ participant, setActiveTab }) => {
   const [errorMsg, setErrorMsg] = useState('');
   const [secondsRemaining, setSecondsRemaining] = useState(0);
   const [decision, setDecision] = useState(null); // 'accept' or 'reject'
+  const pollingIntervalRef = useRef(null);
   const navigate = useNavigate();
 
   const fetchRound = useCallback(async () => {
@@ -357,6 +358,7 @@ const LiveMatchingView = ({ participant, setActiveTab }) => {
       if (res.round?.seconds_remaining !== undefined) {
          setSecondsRemaining(Math.max(0, res.round.seconds_remaining));
       }
+      return res;
     } catch (err) {
       if (err.status === 409) {
         setStatus('waiting');
@@ -374,12 +376,22 @@ const LiveMatchingView = ({ participant, setActiveTab }) => {
 
   useEffect(() => {
     fetchRound();
-    const interval = setInterval(fetchRound, 5000);
-    return () => clearInterval(interval);
+    pollingIntervalRef.current = setInterval(fetchRound, 5000);
+    return () => {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    };
   }, [fetchRound]);
 
   useEffect(() => {
-    if (status !== 'active' || !round || round.phase === 'completed') return;
+    if (round?.phase === 'completed' && pollingIntervalRef.current) {
+      clearInterval(pollingIntervalRef.current);
+      pollingIntervalRef.current = null;
+    }
+  }, [round?.phase]);
+
+  useEffect(() => {
+    if (status !== 'active' || round?.phase === 'completed') return;
     const interval = setInterval(() => {
       setSecondsRemaining(prev => Math.max(0, prev - 1));
     }, 1000);
@@ -448,9 +460,11 @@ const LiveMatchingView = ({ participant, setActiveTab }) => {
            <h3 className="text-xl font-black italic text-white mb-2" style={{ fontFamily: "'Outfit', sans-serif" }}>
              Waiting for the host to start the event...
            </h3>
-           <button onClick={handleStartEvent} className="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold cursor-pointer transition-all hover:scale-105">
-             Start Event
-           </button>
+           {participant?.is_admin && (
+             <button onClick={handleStartEvent} className="mt-6 px-6 py-3 rounded-xl bg-gradient-to-r from-cyan-600 to-teal-600 text-white font-bold cursor-pointer transition-all hover:scale-105">
+               Start Event
+             </button>
+           )}
         </Card>
       </motion.div>
     );

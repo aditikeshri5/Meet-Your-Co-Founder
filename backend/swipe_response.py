@@ -2,9 +2,10 @@
 
 from flask import Blueprint, jsonify, request
 from flask_jwt_extended import get_jwt_identity, jwt_required
-from sqlalchemy import or_
+from sqlalchemy import or_, select
 
-from model import db, Pairing, Participant, Round, SwipeResponse
+from current_round_ep import get_room_phase
+from model import db, Pairing, Participant, Room, Round, SwipeResponse
 
 
 swipes = Blueprint("swipes", __name__)
@@ -25,11 +26,7 @@ def _pairing_for_participant(pairing_id, participant_id):
 @swipes.route("/pairings/<int:pairing_id>/swipe", methods=["POST"])
 @jwt_required()
 def save_swipe(pairing_id):
-    """Create or update the caller's decision for one of their pairings.
-
-    Decisions deliberately remain editable after the event; the frontend can
-    hide its editing controls once matching has ended.
-    """
+    """Create or update the caller's decision for the active pairing only."""
     participant_id = int(get_jwt_identity())
     data = request.get_json(silent=True) or {}
     decision = data.get("decision")
@@ -44,6 +41,18 @@ def save_swipe(pairing_id):
     # A bye has no person to accept or reject.
     if pairing.participant_a_id is None or pairing.participant_b_id is None:
         return jsonify({"error": "Cannot make a decision for a bye"}), 400
+
+    pairing_round = db.session.get(Round, pairing.round_id)
+    room = db.session.execute(
+        select(Room).where(Room.id == pairing_round.room_id).with_for_update()
+    ).scalar_one_or_none()
+    if room is None:
+        return jsonify({"error": "Room not found"}), 404
+
+    current_round, phase, _, _ = get_room_phase(room)
+    if current_round is None or phase != "active" or current_round.id != pairing.round_id:
+        db.session.commit()
+        return jsonify({"error": "Swipes are only allowed for the active pairing"}), 409
 
     response = SwipeResponse.query.filter_by(
         pairing_id=pairing.id, participant_id=participant_id
@@ -68,7 +77,7 @@ def save_swipe(pairing_id):
 @swipes.route("/swipes", methods=["GET"])
 @jwt_required()
 def list_my_swipes():
-    """List all decisions the caller has made, for end-of-event review."""
+    """List only pairings where both participants accepted each other."""
     participant_id = int(get_jwt_identity())
     responses = (
         SwipeResponse.query
@@ -87,6 +96,14 @@ def list_my_swipes():
             if pairing.participant_a_id == participant_id
             else pairing.participant_a_id
         )
+        opponent_response = SwipeResponse.query.filter_by(
+            pairing_id=pairing.id,
+            participant_id=opponent_id,
+            decision="accept",
+        ).first()
+        if response.decision != "accept" or opponent_response is None:
+            continue
+
         opponent = db.session.get(Participant, opponent_id)
         round_obj = db.session.get(Round, pairing.round_id)
         decisions.append({

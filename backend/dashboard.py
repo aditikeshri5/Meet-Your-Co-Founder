@@ -26,6 +26,7 @@ def get_dashboard():
             "name": participant.name,
             "email": participant.email,
             "phone": participant.phone,
-            "room_id": participant.room_id
+            "room_id": participant.room_id,
+            "is_admin": participant.is_admin
         }
     }), 200

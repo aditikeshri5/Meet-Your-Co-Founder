@@ -92,9 +92,9 @@ Content-Type: application/json
 ```
 
 Allowed values are `accept` and `reject`. The same request can be sent again
-with the other value to update the decision. The backend deliberately keeps
-decisions editable, including after the event; the frontend should hide or
-disable editing after the matching UI ends.
+with the other value to update the decision while that pairing is active.
+Swipes for stale, future, transition, or completed rounds are rejected with
+`409`.
 
 Do not send a swipe when `pairing` is `null` or `is_bye` is `true`.
 
@@ -122,14 +122,15 @@ Example response:
 }
 ```
 
-Use this list to show the people the user accepted/rejected. “Finalize” is a UI
-action only at present: it must not call a special backend endpoint and does
-not lock the stored decisions.
+Use this list to show mutual connections: a participant appears only when both
+people accepted the same pairing. One-sided accepts and rejects are not
+returned by this endpoint.
 
 ## Error handling
 
 - `401`: missing or expired login token; redirect to login.
 - `403`: user lacks admin privileges or is not in the requested room.
 - `404`: requested pairing does not belong to the user, or it does not exist.
-- `409`: event has not started, or the event was already started by an admin.
+- `409`: event has not started, the event was already started by an admin, or
+  the swipe does not belong to the active pairing.
 - `400`: invalid swipe decision or attempt to swipe a bye.
